@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Can We Touch Your Hair? - Word Cloud</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- AnyChart CDN for the Word Cloud functionality -->
+    <script src="https://cdn.anychart.com/releases/8.11.0/js/anychart-core.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.11.0/js/anychart-tag-cloud.min.js"></script>
+    <style>
+        #cloud-container { width: 100%; height: 500px; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen flex items-center justify-center p-6">
+
+    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 transition-all duration-300">
+        
+        <!-- HEADER -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">"Can We Touch Your Hair?"</h1>
+            <p class="text-gray-500">Analysis Activity: Exploring the Core Conflict</p>
+        </header>
+
+        <!-- VIEW 1: SUBMISSION FORM -->
+        <div id="form-view">
+            <form id="conflict-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Your Name</label>
+                    <input type="text" id="student-name" required placeholder="Enter your full name" 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Provide three words that best represent the main conflict in the poem:
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="word1" required placeholder="Word 1" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <input type="text" id="word2" required placeholder="Word 2" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <input type="text" id="word3" required placeholder="Word 3" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md cursor-pointer text-center">
+                    Submit & View Word Cloud
+                </button>
+            </form>
+            <div class="text-center mt-4">
+                <button onclick="switchToCloud()" class="text-sm text-indigo-500 hover:underline cursor-pointer">Skip to Word Cloud</button>
+            </div>
+        </div>
+
+        <!-- VIEW 2: WORD CLOUD -->
+        <div id="cloud-view" class="hidden">
+            <h2 class="text-xl font-bold text-center text-gray-700 mb-4">Class Conflict Word Cloud</h2>
+            <div id="cloud-container" class="border border-gray-100 rounded-xl bg-gray-50"></div>
+            <div class="text-center mt-6">
+                <button onclick="window.location.reload()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-lg transition duration-200 cursor-pointer">
+                    Back to Form
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const formView = document.getElementById('form-view');
+        const cloudView = document.getElementById('cloud-view');
+        let chart = null;
+
+        document.getElementById('conflict-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                name: document.getElementById('student-name').value,
+                words: [
+                    document.getElementById('word1').value,
+                    document.getElementById('word2').value,
+                    document.getElementById('word3').value
+                ]
+            };
+
+            try {
+                const response = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    switchToCloud();
+                } else {
+                    const errData = await response.json();
+                    alert(errData.error || 'Something went wrong.');
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('Failed to connect to the server.');
+            }
+        });
+
+        async function switchToCloud() {
+            formView.classList.add('hidden');
+            cloudView.classList.remove('hidden');
+            await renderWordCloud();
+        }
+
+        async function renderWordCloud() {
+            try {
+                const response = await fetch('/api/wordcloud');
+                const data = await response.json();
+
+                // Clear previous chart container instance if it exists
+                document.getElementById('cloud-container').innerHTML = '';
+
+                if (data.length === 0) {
+                    document.getElementById('cloud-container').innerHTML = `
+                        <div class="flex items-center justify-center h-full text-gray-400">
+                            No data yet. Be the first to submit!
+                        </div>`;
+                    return;
+                }
+
+                // Initialize AnyChart Tag Cloud
+                chart = anychart.tagCloud(data);
+                chart.angles([0, 90, -45, 45]);
+                chart.colorRange(false);
+                
+                // Fine-tuning look & feel
+                chart.normal().fontFamily('ui-sans-serif, system-ui, sans-serif');
+                chart.container('cloud-container');
+                chart.draw();
+
+            } catch (error) {
+                console.error('Error fetching word cloud data:', error);
+            }
+        }
+    </script>
+</body>
+</html>
